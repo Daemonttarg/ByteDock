@@ -31,4 +31,10 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logger.error({ err }, "Request failed");
+  const message = err instanceof Error ? err.message : "Request failed";
+  res.status(400).json({ error: message });
+});
+
 export default app;

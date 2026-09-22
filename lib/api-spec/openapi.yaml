@@ -1,22 +1,26 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ByteDock coding assessment platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: dashboard
+  - name: problems
+  - name: submissions
+  - name: students
+  - name: progress
+  - name: execution
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +28,571 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Error"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get role-aware dashboard metrics
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /problems:
+    get:
+      operationId: listProblems
+      tags: [problems]
+      summary: List coding problems
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [easy, medium, hard]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, archived]
+      responses:
+        "200":
+          description: Problems
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Problem"
+    post:
+      operationId: createProblem
+      tags: [problems]
+      summary: Create a coding problem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProblemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /problems/{id}:
+    get:
+      operationId: getProblem
+      tags: [problems]
+      summary: Get a problem
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Problem
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateProblem
+      tags: [problems]
+      summary: Update a coding problem
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProblemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: deleteProblem
+      tags: [problems]
+      summary: Delete a coding problem
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+    post:
+      operationId: publishProblem
+      tags: [problems]
+      summary: Publish a coding problem
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /problems/{id}/test-cases:
+    post:
+      operationId: addTestCase
+      tags: [problems]
+      summary: Add a test case
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestCaseInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestCase"
+  /execute:
+    post:
+      operationId: executeCode
+      tags: [execution]
+      summary: Execute Python code against a problem's test cases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteInput"
+      responses:
+        "200":
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionResult"
+  /submissions:
+    get:
+      operationId: listSubmissions
+      tags: [submissions]
+      summary: List submissions for the current student or staff view
+      parameters:
+        - name: problemId
+          in: query
+          schema: { type: string }
+        - name: studentId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Submissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Submission"
+    post:
+      operationId: createSubmission
+      tags: [submissions]
+      summary: Submit code for judging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionInput"
+      responses:
+        "201":
+          description: Judged submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Submission"
+  /submissions/{id}:
+    get:
+      operationId: getSubmission
+      tags: [submissions]
+      summary: Get a submission
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Submission"
+  /students:
+    get:
+      operationId: listStudents
+      tags: [students]
+      summary: List students for admin or staff
+      responses:
+        "200":
+          description: Students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentSummary"
+  /students/{id}/analytics:
+    get:
+      operationId: getStudentAnalytics
+      tags: [students]
+      summary: Get student performance analytics
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Student analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentAnalytics"
+  /progress:
+    get:
+      operationId: getProgress
+      tags: [progress]
+      summary: Get current student progress
+      responses:
+        "200":
+          description: Progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Progress"
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [dashboard]
+      summary: List recent platform activity
+      responses:
+        "200":
+          description: Activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
       properties:
+        status: { type: string }
+      required: [status]
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        role:
+          type: string
+          enum: [admin, staff, student]
+        avatar: { type: ["string", "null"] }
+      required: [id, name, email, role]
+    RegisterInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+      required: [name, email, password]
+    LoginInput:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 1 }
+      required: [email, password]
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user:
+          $ref: "#/components/schemas/User"
+      required: [token, user]
+    TestCase:
+      type: object
+      properties:
+        id: { type: string }
+        input: { type: string }
+        expectedOutput: { type: string }
+        isSample: { type: boolean }
+      required: [id, input, expectedOutput, isSample]
+    TestCaseInput:
+      type: object
+      properties:
+        input: { type: string }
+        expectedOutput: { type: string }
+        isSample: { type: boolean }
+      required: [input, expectedOutput]
+    Problem:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        slug: { type: string }
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        category: { type: string }
+        description: { type: string }
+        starterCode: { type: string }
         status:
           type: string
-      required:
-        - status
-
+          enum: [draft, published, archived]
+        acceptanceRate: { type: number }
+        solveCount: { type: integer }
+        testCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestCase"
+        createdAt: { type: string, format: date-time }
+      required: [id, title, slug, difficulty, category, description, starterCode, status, acceptanceRate, solveCount, testCases, createdAt]
+    ProblemInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 3 }
+        category: { type: string }
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        description: { type: string }
+        starterCode: { type: string }
+        status:
+          type: string
+          enum: [draft, published]
+      required: [title, category, difficulty, description, starterCode]
+    ProblemUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 3 }
+        category: { type: string }
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        description: { type: string }
+        starterCode: { type: string }
+        status:
+          type: string
+          enum: [draft, published, archived]
+    ExecuteInput:
+      type: object
+      properties:
+        problemId: { type: string }
+        code: { type: string }
+      required: [problemId, code]
+    ExecutionResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [passed, failed, error, timeout]
+        passed: { type: integer }
+        total: { type: integer }
+        runtimeMs: { type: integer }
+        output: { type: string }
+        testResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestResult"
+      required: [status, passed, total, runtimeMs, output, testResults]
+    TestResult:
+      type: object
+      properties:
+        testCaseId: { type: string }
+        passed: { type: boolean }
+        actual: { type: string }
+        expected: { type: string }
+      required: [testCaseId, passed, actual, expected]
+    SubmissionInput:
+      type: object
+      properties:
+        problemId: { type: string }
+        code: { type: string }
+      required: [problemId, code]
+    Submission:
+      type: object
+      properties:
+        id: { type: string }
+        problemId: { type: string }
+        problemTitle: { type: string }
+        studentId: { type: string }
+        studentName: { type: string }
+        code: { type: string }
+        status:
+          type: string
+          enum: [accepted, rejected, error]
+        passedTests: { type: integer }
+        totalTests: { type: integer }
+        runtimeMs: { type: integer }
+        createdAt: { type: string, format: date-time }
+      required: [id, problemId, problemTitle, studentId, studentName, code, status, passedTests, totalTests, runtimeMs, createdAt]
+    StudentSummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        solvedCount: { type: integer }
+        submissionCount: { type: integer }
+        lastActiveAt: { type: ["string", "null"], format: date-time }
+      required: [id, name, email, solvedCount, submissionCount, lastActiveAt]
+    StudentAnalytics:
+      type: object
+      properties:
+        student:
+          $ref: "#/components/schemas/StudentSummary"
+        accepted: { type: integer }
+        rejected: { type: integer }
+        byDifficulty:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metric"
+        recentSubmissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Submission"
+      required: [student, accepted, rejected, byDifficulty, recentSubmissions]
+    Progress:
+      type: object
+      properties:
+        solvedCount: { type: integer }
+        totalPublished: { type: integer }
+        completionPercent: { type: number }
+        streak: { type: integer }
+        byDifficulty:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metric"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
+      required: [solvedCount, totalPublished, completionPercent, streak, byDifficulty, recentActivity]
+    Metric:
+      type: object
+      properties:
+        label: { type: string }
+        value: { type: integer }
+      required: [label, value]
+    Activity:
+      type: object
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [submission, solve, publish, register]
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+        userName: { type: string }
+      required: [id, type, message, createdAt, userName]
+    DashboardSummary:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, staff, student]
+        totalStudents: { type: integer }
+        totalStaff: { type: integer }
+        totalProblems: { type: integer }
+        publishedProblems: { type: integer }
+        totalSubmissions: { type: integer }
+        acceptedSubmissions: { type: integer }
+        activeStudents: { type: integer }
+        solvedCount: { type: integer }
+        completionPercent: { type: number }
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
+        weeklySubmissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metric"
+      required: [role, totalStudents, totalStaff, totalProblems, publishedProblems, totalSubmissions, acceptedSubmissions, activeStudents, solvedCount, completionPercent, recentActivity, weeklySubmissions]

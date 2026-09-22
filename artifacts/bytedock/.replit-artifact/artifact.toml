@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ByteDock"
+description = "A full-stack coding assessment platform for admins, staff, and students, with problem authoring, Python execution, submissions, analytics, and progress tracking."
+version = "1.0.0"
+id = "artifacts/bytedock"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23032
+
+[services.development]
+run = "pnpm --filter @workspace/bytedock run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bytedock", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/bytedock/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23032"
+BASE_PATH = "/"
